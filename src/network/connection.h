@@ -4,7 +4,7 @@
 #include <string>
 #include <functional>
 
-class Connection : std::enable_shared_from_this<Connection> {
+class Connection : public std::enable_shared_from_this<Connection> {
 public:
     // clang-format off
     enum State {
@@ -32,9 +32,6 @@ public:
     int GetFd() const;
     const std::string& GetRemoteAddress() const;
     State GetState() const;
-
-    // 清理连接资源
-    void Clear();
 
     // 设置回调函数, 提供给上层设置
     void SetDataCallback(DataCallback cb);

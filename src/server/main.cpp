@@ -15,22 +15,22 @@ int main(int argc, char* argv[]) {
 
     // 验证端口范围
     if (port <= 0 || port > 65535) {
-        std::cerr << "Error: Port must be between 1 and 65535" << std::endl;
+        std::cerr << "Error: Port must be between 1 and 65535" << "\n";
         return 1;
     }
 
     try {
         // 创建并运行服务器
         ChatServer server;
-        if (!server.Start(ip_address, port)) {
-            std::cerr << "Failed to start server." << std::endl;
+        if (!server.Init(ip_address, port)) {
+            std::cerr << "Failed to start server." << "\n";
             return 1;
         }
 
-        std::cout << "Server is running on " << ip_address << ":" << port << std::endl;
-        server.Run();
+        std::cout << "Server is running on " << ip_address << ":" << port << "\n";
+        server.Start();
     } catch (const std::exception& e) {
-        std::cerr << "Server error: " << e.what() << std::endl;
+        std::cerr << "Server error: " << e.what() << "\n";
         return 1;
     }
 

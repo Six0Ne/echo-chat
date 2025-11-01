@@ -7,7 +7,7 @@
 
 class ProtocolHandler {
 public:
-    using MessageHandler = std::function<void(std::shared_ptr<Connection>, const MessageHeader&, const std::string&)>;
+    using MessageHandler = std::function<void(std::shared_ptr<Connection>, const std::string&)>;
 
     ProtocolHandler() = default;
     ~ProtocolHandler() = default;

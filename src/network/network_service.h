@@ -14,8 +14,11 @@ public:
     NetWorkService();
     virtual ~NetWorkService();
 
+    // 初始化服务
+    virtual bool Init(const std::string& ip, int port);
+
     // 启动服务
-    virtual bool Start(const std::string& ip, int port);
+    virtual void Start();
 
     // 停止服务
     virtual void Stop();
@@ -32,8 +35,6 @@ protected:
 
     virtual void OnConnectionClosed(std::shared_ptr<Connection> conn);
 
-    virtual void OnMessageReceived(std::shared_ptr<Connection> conn, uint16_t msg_type, const std::string& payload);
-
     virtual void OnError(const std::string& error_msg);
 
     // 组件
@@ -42,7 +43,7 @@ protected:
     std::unique_ptr<ProtocolHandler> protocol_handler_;
 
     int server_fd_;
-    bool running_;
+    bool event_loop_running_;
 
 private:
     void SetEventHandlers();

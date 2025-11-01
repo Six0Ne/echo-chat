@@ -4,18 +4,18 @@
 
 #include "network_service.h"
 
-NetWorkService::NetWorkService() : server_fd_(-1), running_(false) {
+NetWorkService::NetWorkService() : server_fd_(-1), event_loop_running_(false) {
     event_dispatcher_ = std::make_unique<EventDispatcher>();
     connection_manager_ = std::make_unique<ConnectionManager>();
     protocol_handler_ = std::make_unique<ProtocolHandler>();
 }
 
 NetWorkService::~NetWorkService() {
-    Stop();
+    this->Stop();
 }
 
 // 启动服务
-bool NetWorkService::Start(const std::string& ip, int port) {
+bool NetWorkService::Init(const std::string& ip, int port) {
     try {
         server_fd_ = SocketWrapper::CreateSocket();
         SocketWrapper::SetNonBlocking(server_fd_);
@@ -23,27 +23,31 @@ bool NetWorkService::Start(const std::string& ip, int port) {
         SocketWrapper::ListenSocket(server_fd_);
 
         // 设置事件处理器
-        SetEventHandlers();
+        this->SetEventHandlers();
 
         // 添加服务器Socket到事件分发器
         event_dispatcher_->AddEvent(server_fd_, EventDispatcher::EventType::READ);
 
-        running_ = true;
-        std::cout << "Network service started on " << ip << ":" << port << std::endl;
+        std::cout << "Network service started on " << ip << ":" << port << "\n";
 
         // 启动事件循环（在单独的线程）
-        event_dispatcher_->RunEventLoop();
+        // event_dispatcher_->RunEventLoop();
 
         return true;
     } catch (const std::exception& e) {
-        OnError(e.what());
+        this->OnError(e.what());
         return false;
     }
 }
 
+void NetWorkService::Start() {
+    event_loop_running_ = true;
+    event_dispatcher_->RunEventLoop();
+}
+
 // 停止服务
 void NetWorkService::Stop() {
-    running_ = false;
+    event_loop_running_ = false;
     if (event_dispatcher_) {
         event_dispatcher_->StopEventLoop();
     }
@@ -75,6 +79,8 @@ void NetWorkService::BroadcastMessage(uint16_t msg_type, const std::string& payl
 void NetWorkService::SetEventHandlers() {
     // 注册读取事件处理器
     event_dispatcher_->RegisterEventHandler(EventDispatcher::READ, [this](const EventDispatcher::EventContext& ctx) {
+        // std::cout << "READ event on fd: " << ctx.fd << "\n";
+        // std::cout << "server_fd_: " << server_fd_ << "\n";
         if (ctx.fd == server_fd_) {  // server_fd_ 可读，说明有新连接
             HandleNewConnection();
         } else {
@@ -95,13 +101,13 @@ void NetWorkService::SetEventHandlers() {
 void NetWorkService::HandleNewConnection() {
     try {
         int client_fd = SocketWrapper::AcceptConnection(server_fd_);
-        SocketWrapper::SetNonBlocking(client_fd);
-
+        // SocketWrapper::SetNonBlocking(client_fd);
+        std::cout << "Accepted new connection, fd: " << client_fd << "\n";
         std::string remote_addr = "unknown";  // 实际应该从socket获取
         int remote_port = 0;                  // 实际应该从socket获取
         SocketWrapper::GetPeerAddress(client_fd, remote_addr, remote_port);
         auto conn = std::make_shared<Connection>(client_fd, remote_addr);
-
+        std::cout << "Peer address: " << remote_addr << ":" << remote_port << "\n";
         // 设置连接的回调
         conn->SetDataCallback([this](auto conn, auto data) { protocol_handler_->HandleData(conn, data); });
 
@@ -144,10 +150,6 @@ void NetWorkService::OnConnectionEstablished(std::shared_ptr<Connection> conn) {
 
 void NetWorkService::OnConnectionClosed(std::shared_ptr<Connection> conn) {}
 
-void NetWorkService::OnMessageReceived(std::shared_ptr<Connection> conn,
-                                       uint16_t msg_type,
-                                       const std::string& payload) {}
-
 void NetWorkService::OnError(const std::string& error_msg) {
-    std::cerr << "NetworkService Error: " << error_msg << std::endl;
+    std::cerr << "NetworkService Error: " << error_msg << "\n";
 }

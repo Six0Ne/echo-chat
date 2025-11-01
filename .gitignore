@@ -1,4 +1,18 @@
+# 构建输出
 build/
+*/build/
+*/*/build/
+
+# IDE 配置
 .vscode/
-.clang-format
-.gitignore
+
+# 系统文件
+
+# 编译产物
+*.o
+*.a
+*.so
+*.dll
+*.exe
+
+# 日志文件

@@ -11,13 +11,14 @@ ClientNetworkService::~ClientNetworkService() {
     Disconnect();
 }
 
-bool ClientNetworkService::Connect(const std::string& ip, int port) {
-    std::cout << ip << "\n";
-    std::cout << port << "\n";
+bool ClientNetworkService::Init(const std::string& ip, int port) {
     try {
         int client_fd = SocketWrapper::CreateSocket();
-        SocketWrapper::SetNonBlocking(client_fd);
+        std::cout << "Socket created with fd: " << client_fd << "\n";
         SocketWrapper::ConnectSocket(client_fd, ip, port);
+        SocketWrapper::SetNonBlocking(client_fd);
+
+        this->SetEventHandlers();
 
         server_connection_ = std::make_shared<Connection>(client_fd, ip);
         server_connection_->SetDataCallback(
@@ -29,19 +30,20 @@ bool ClientNetworkService::Connect(const std::string& ip, int port) {
 
         connection_manager_->AddConnection(server_connection_);
         event_dispatcher_->AddEvent(client_fd, EventDispatcher::READ);
-
-        if (connection_status_callback_) {
-            connection_status_callback_(true, "Connected to server");
-        }
+        event_dispatcher_->AddEvent(STDIN_FILENO, EventDispatcher::READ);
 
         return true;
-    } catch (const std::exception& e) {
-        if (connection_status_callback_) {
-            connection_status_callback_(false, e.what());
-            std::cerr << "Connection failed: " << e.what() << std::endl;
-        }
+    } catch (const std::runtime_error& e) {
+        std::cerr << "Connection failed: " << e.what() << "\n";
         return false;
     }
+}
+
+bool ClientNetworkService::IsConnected() const {
+    if (server_connection_ && server_connection_->GetState() == Connection::CONNECTED) {
+        return true;
+    }
+    return false;
 }
 
 void ClientNetworkService::SendMessage(uint16_t msg_type, const std::string& payload) {
@@ -58,29 +60,42 @@ void ClientNetworkService::Disconnect() {
     }
 }
 
-void ClientNetworkService::SetConnectionStatusCallback(ConnectionStatusCallback callback) {
-    connection_status_callback_ = callback;
-}
-
-void ClientNetworkService::SetMessageReceivedCallback(MessageReceivedCallback callback) {
-    message_received_callback_ = callback;
-}
-
 void ClientNetworkService::OnConnectionEstablished(std::shared_ptr<Connection> conn) {
-    std::cout << "Connection established with server." << std::endl;
+    std::cout << "Connection established with server." << "\n";
 }
 
 void ClientNetworkService::OnConnectionClosed(std::shared_ptr<Connection> conn) {
-    std::cout << "Connection closed." << std::endl;
-    if (connection_status_callback_) {
-        connection_status_callback_(false, "Connection closed by server");
-    }
+    this->Disconnect();
 }
 
-void ClientNetworkService::OnMessageReceived(std::shared_ptr<Connection> conn,
-                                             uint16_t msg_type,
-                                             const std::string& payload) {
-    if (message_received_callback_) {
-        message_received_callback_(msg_type, payload);
+void ClientNetworkService::SetEventHandlers() {
+    // 注册读取事件处理器
+    event_dispatcher_->RegisterEventHandler(EventDispatcher::READ, [this](const EventDispatcher::EventContext& ctx) {
+        if (ctx.fd == STDIN_FILENO) {
+            this->HandleStandardInputEvent();
+        } else {
+            this->HandleConnectionEvent(ctx);
+        }
+    });
+
+    // 注册关闭事件处理器
+    event_dispatcher_->RegisterEventHandler(EventDispatcher::CLOSE, [this](const EventDispatcher::EventContext& ctx) {
+        auto conn = connection_manager_->GetConnection(ctx.fd);
+        if (conn) {
+            OnConnectionClosed(conn);
+            connection_manager_->RemoveConnection(ctx.fd);
+        }
+    });
+}
+
+void ClientNetworkService::HandleConnectionEvent(const EventDispatcher::EventContext& ctx) {
+    auto conn = connection_manager_->GetConnection(ctx.fd);
+    if (conn) {
+        if (ctx.events & EventDispatcher::READ) {
+            conn->OnDataAvailable();
+        }
+        if (ctx.events & EventDispatcher::WRITE) {
+            conn->OnWriteAvailable();
+        }
     }
 }

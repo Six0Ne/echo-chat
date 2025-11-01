@@ -20,19 +20,23 @@ void Connection::Send(const std::string& data) {
         return;
     }
 
-    // 简单实现, 直接发送, 实际环境肯定会更复杂
-    ssize_t sent = send(fd_, data.data(), data.size(), 0);
-    if (sent < 0 && (errno != EAGAIN && errno != EWOULDBLOCK)) {
-        if (error_callback_) {
-            error_callback_(shared_from_this(), "Send failed with error");
-        }
-    } else if (sent < 0) {
-        if (error_callback_) {
-            error_callback_(shared_from_this(), "Connection not connected");
+    ssize_t sent = send(fd_, data.data(), data.size(), MSG_NOSIGNAL);
+    if (sent < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            // 缓存未发送的数据
+            output_buffer_.append(data);
+            // 需要注册写事件来继续发送
+            return;
+        } else {
+            // 真正的错误
+            if (error_callback_) {
+                error_callback_(shared_from_this(), "Send failed: " + std::string(strerror(errno)));
+            }
+            return;
         }
     } else if (sent < static_cast<ssize_t>(data.size())) {
-        // 部分发送,存储到缓存区中
-        output_buffer_.append(data.substr(sent, data.size()));
+        // 部分发送，缓存剩余数据
+        output_buffer_.append(data.substr(sent));
     }
 }
 
@@ -81,8 +85,8 @@ void Connection::OnDataAvailable() {
     if (received > 0) {
         buffer[received] = '\0';
         input_buffer_.append(buffer, received);
-
-        // 如果有设置数据回调
+        // std::cout << "Connection fd " << fd_ << " received data: " << input_buffer_ << "\n";
+        //  如果有设置数据回调
         if (data_callback_) {
             data_callback_(shared_from_this(), input_buffer_);
             input_buffer_.clear();
@@ -99,6 +103,7 @@ void Connection::OnDataAvailable() {
 void Connection::OnWriteAvailable() {
     if (!output_buffer_.empty()) {
         ssize_t sent = send(fd_, output_buffer_.data(), output_buffer_.size(), 0);
+        std::cout << "Connection fd " << fd_ << " sent data, bytes sent: " << sent << "\n";
         if (sent > 0) {
             output_buffer_.erase(0, sent);
         } else if (sent < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
@@ -111,14 +116,4 @@ void Connection::OnError() {
     if (error_callback_) {
         error_callback_(shared_from_this(), "Socket error occurred");
     }
-}
-
-void Connection::Clear() {
-    if (fd_ >= 0) {
-        SocketWrapper::CloseSocket(fd_);
-        fd_ = -1;
-    }
-    state_ = DISCONNECTED;
-    input_buffer_.clear();
-    output_buffer_.clear();
 }

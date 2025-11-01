@@ -8,14 +8,14 @@
 
 class ClientNetworkService : public NetWorkService {
 public:
-    using ConnectionStatusCallback = std::function<void(bool connected, const std::string)>;
-    using MessageReceivedCallback = std::function<void(uint16_t msg_type, const std::string& payload)>;
-
     ClientNetworkService();
     virtual ~ClientNetworkService();
 
     // 连接到服务器
-    bool Connect(const std::string& ip, int port);
+    bool Init(const std::string& ip, int port) override;
+
+    // 连接状态检查
+    bool IsConnected() const;
 
     // 发送消息
     void SendMessage(uint16_t msg_type, const std::string& payload);
@@ -23,17 +23,17 @@ public:
     // 断开连接
     void Disconnect();
 
-    // 设置回调
-    void SetConnectionStatusCallback(ConnectionStatusCallback callback);
-    void SetMessageReceivedCallback(MessageReceivedCallback callback);
-
 protected:
     void OnConnectionEstablished(std::shared_ptr<Connection> conn) override;
     void OnConnectionClosed(std::shared_ptr<Connection> conn) override;
-    void OnMessageReceived(std::shared_ptr<Connection> conn, uint16_t msg_type, const std::string& payload) override;
+
+    virtual void HandleStandardInputEvent() = 0;
 
 private:
     std::shared_ptr<Connection> server_connection_;
-    ConnectionStatusCallback connection_status_callback_;
-    MessageReceivedCallback message_received_callback_;
+
+private:
+    void SetEventHandlers();
+
+    void HandleConnectionEvent(const EventDispatcher::EventContext& ctx);
 };

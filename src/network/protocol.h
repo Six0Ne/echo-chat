@@ -5,22 +5,21 @@
 #include <vector>
 
 struct MessageHeader {
-    uint16_t msg_type;   // 消息分类
-    uint16_t msg_len;    // 消息边界
-    uint32_t sequence;   // 消息顺序
-    uint32_t timestamp;  // 消息时效
+    uint16_t msg_type;   // 消息类型
+    uint16_t msg_len;    // 消息长度
+    uint32_t sequence;   // 消息序列号
+    uint32_t timestamp;  // 消息时间戳
 
-    static const std::size_t kSize = 12;  // 2 + 2 + 4 + 4 = 12 byte
+    static constexpr std::size_t kSize = 12;  // 2 + 2 + 4 + 4 = 12 bytes
 };
 
 namespace MsgType {
-// constexpr uint16_t UNDEFINED = 0;
 constexpr uint16_t LOGIN = 1;
 constexpr uint16_t LOGOUT = 2;
 constexpr uint16_t PRIVATE_MSG = 3;
 constexpr uint16_t GROUP_MSG = 4;
 constexpr uint16_t USER_LIST = 5;
-};  // namespace MegType
+};  // namespace MsgType
 
 class ProtocolDecoder {
 public:
@@ -36,4 +35,7 @@ public:
 private:
     static uint32_t GenerateSequence();
     static uint32_t GetCurrentTimestamp();
+
+    // 最大载荷大小限制 (10MB)
+    static constexpr size_t MAX_PAYLOAD_SIZE = 10 * 1024 * 1024;
 };

@@ -1,7 +1,8 @@
 #include "event_dispatcher.h"
 #include <system_error>
 #include <unistd.h>
-// #include <callback.h>
+#include <iostream>
+#include "connection.h"
 
 EventDispatcher::EventDispatcher() : running_(false) {
     epoll_fd_ = epoll_create1(0);
@@ -16,19 +17,19 @@ EventDispatcher::~EventDispatcher() {
 }
 
 // 添加事件监听
-bool EventDispatcher::AddEvent(int fd, EventType events, void* user_data) {
+bool EventDispatcher::AddEvent(int fd, EventType events) {
     epoll_event ev;
     ev.events = events;
-    ev.data.ptr = user_data;
+    ev.data.fd = fd;
 
     return epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, fd, &ev);
 }
 
 // 修改事件
-bool EventDispatcher::ModifyEvent(int fd, EventType events, void* user_data) {
+bool EventDispatcher::ModifyEvent(int fd, EventType events) {
     epoll_event ev;
     ev.events = events;
-    ev.data.ptr = user_data;
+    ev.data.fd = fd;
 
     return epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, fd, &ev);
 }
@@ -40,13 +41,14 @@ bool EventDispatcher::RemoveEvent(int fd) {
 
 // 时间循环
 void EventDispatcher::RunEventLoop(int timeout_ms) {
+    // std::cout << "EventDispatcher: Starting event loop." << "\n";
     running_ = true;
 
     while (running_) {
         int num_events = epoll_wait(epoll_fd_, events_.data(), events_.size(), timeout_ms);
-
+        // std::cout << "EventDispatcher: epoll_wait returned " << num_events << " events." << "\n";
         if (num_events < 0) {
-            if (num_events == EINTR) {
+            if (errno == EINTR) {
                 continue;
             }
             throw std::system_error(errno, std::system_category(), "Epoll wait failed");
@@ -54,15 +56,20 @@ void EventDispatcher::RunEventLoop(int timeout_ms) {
 
         for (int i = 0; i < num_events; i++) {
             EventContext ctx;
-            ctx.fd = events_[i].data.fd;
             ctx.events = static_cast<EventType>(events_[i].events);
-            ctx.user_data = events_[i].data.ptr;
+            ctx.fd = events_[i].data.fd;
+            // std::cout << "EventDispatcher: Handling event for fd " << events_[i].data.fd << " with events "
+            //           << ctx.events << "\n";
 
             // 分发到对应的事件处理器
-            for (const auto& [event_ytpe, event_callback] : events_handler_) {
+            for (const auto& [event_type, event_callback] : events_handler_) {
                 // 如何触发的事件注册到了handler上
-                if (event_ytpe & events_[i].events) {
-                    event_callback(ctx);
+                if (events_[i].events & event_type) {  // 应当是检查 events_[i].events 是否包含 event_type
+                    if (event_callback) {
+                        event_callback(ctx);
+                    }
+                    // std::cout << "EventDispatcher: Dispatched event for fd " << ctx.fd << " to handler." <<
+                    // "\n";
                 }
             }
         }

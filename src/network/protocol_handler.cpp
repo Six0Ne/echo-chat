@@ -3,6 +3,7 @@
 
 // 处理接收到的数据
 void ProtocolHandler::HandleData(std::shared_ptr<Connection> conn, const std::string& data) {
+    // std::cout << data << "\n";
     static std::string buffer;
     buffer.append(data);
     MessageHeader header;
@@ -10,10 +11,12 @@ void ProtocolHandler::HandleData(std::shared_ptr<Connection> conn, const std::st
 
     // 尝试从缓存区解析所有完整消息
     while (ProtocolDecoder::TryParseMessage(buffer, header, payload)) {
-        // 查看该消息是否有注册， 是否要执行对应的回调函数
+        // std::cout << "Received message of type: " << header.msg_type << ", length: " << header.msg_len << "\n";
+        //  查看该消息是否有注册， 是否要执行对应的回调函数
         auto it = message_handler_.find(header.msg_type);
         if (it != message_handler_.end()) {
-            it->second(conn, header, payload);
+            it->second(conn, payload);
+            // std::cout << "Handled message of type: " << header.msg_type << "\n";
         } else {
             std::cerr << "Unknown message type: " << header.msg_type << "\n";
         }

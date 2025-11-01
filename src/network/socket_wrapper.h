@@ -55,6 +55,7 @@ public:
         addr.sin_port = htons(port);
 
         if (connect(socket_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
+            std::cout << "ConnectSocket error errno: " << errno << "\n";
             throw std::system_error(errno, std::system_category(), "Socket connect failed");
         }
     }

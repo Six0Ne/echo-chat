@@ -19,7 +19,6 @@ public:
     struct EventContext {
         int fd;
         EventType events;
-        void* user_data;
     };
 
     using EventCallback = std::function<void(const EventContext&)>;
@@ -28,10 +27,10 @@ public:
     ~EventDispatcher();
 
     // 添加事件监听
-    bool AddEvent(int fd, EventType events, void* user_data = nullptr);
+    bool AddEvent(int fd, EventType events);
 
     // 修改事件
-    bool ModifyEvent(int fd, EventType events, void* user_data = nullptr);
+    bool ModifyEvent(int fd, EventType events);
 
     // 删除事件
     bool RemoveEvent(int fd);

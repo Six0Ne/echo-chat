@@ -7,9 +7,7 @@ public:
     ChatClient();
     ~ChatClient() = default;
 
-    // bool ConnectToServer(const std::string& ip, int port);
-    // void SendChatMessage(const std::string& message);
-
+    void SetMessageHandlers();
     bool Login(const std::string& username, const std::string& password);
     void Logout();
     void SendPrivateMessage(const std::string& target_user, const std::string& message);
@@ -17,5 +15,11 @@ public:
     void RequestUserList();
 
 protected:
-    void OnMessageReceived(std::shared_ptr<Connection> conn, uint16_t msg_type, const std::string& payload) override;
+    void OnConnectionEstablished(std::shared_ptr<Connection> conn) override;
+    void OnConnectionClosed(std::shared_ptr<Connection> conn) override;
+    void HandleStandardInputEvent() override;
+
+private:
+    bool logged_in_ = false;
+    std::string username_;
 };
