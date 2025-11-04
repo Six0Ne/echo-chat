@@ -90,32 +90,32 @@ void ChatClient::HandleStandardInputEvent() {
     int choice = Menu::GetUserChoice();
 
     switch (choice) {
-    case 1: {  // Login
+    case Menu::LOGIN: {  // Login
         std::string username = Menu::GetUserInput("Enter username: ");
         std::string password = Menu::GetUserInput("Enter password: ");
         Login(username, password);
         break;
     }
-    case 2: {  // Logout
+    case Menu::LOGOUT: {  // Logout
         Logout();
         break;
     }
-    case 3: {  // Send Private Message
+    case Menu::PRIVATE_MSG: {  // Send Private Message
         std::string target_user = Menu::GetUserInput("Enter target username: ");
         std::string message = Menu::GetUserInput("Enter message: ");
         SendPrivateMessage(target_user, message);
         break;
     }
-    case 4: {  // Send Group Message
+    case Menu::GROUP_MSG: {  // Send Group Message
         std::string message = Menu::GetUserInput("Enter message: ");
         SendGroupMessage(message);
         break;
     }
-    case 5: {  // View Online Users
+    case Menu::USER_LIST: {  // View Online Users
         RequestUserList();
         break;
     }
-    case 6: {  // Exit
+    case Menu::EXIT: {  // Exit
         // running = false;
         Logout();
         break;
