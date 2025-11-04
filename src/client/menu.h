@@ -4,6 +4,7 @@
 
 class Menu {
 public:
+    enum Input { LOGIN = 1, LOGOUT = 2, PRIVATE_MSG = 3, GROUP_MSG = 4, USER_LIST = 5, EXIT = 6 };
     // 显示主菜单
     static void ShowMainMenu();
 
